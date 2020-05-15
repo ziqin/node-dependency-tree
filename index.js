@@ -38,6 +38,11 @@ module.exports = function(options) {
   dedupeNonExistent(config.nonExistent);
   debug('deduped list of nonExistent partials: ', config.nonExistent);
 
+  if (config.isPackageForm) {
+    debug('package form of results requested');
+    return Array.from(config.visitedPackages.values());
+  }
+
   let tree;
   if (config.isListForm) {
     debug('list form of results requested');
@@ -97,6 +102,22 @@ module.exports._getDependencies = function(config) {
   }
 
   const resolvedDependencies = [];
+
+  if (config.isPackageForm) {
+    dependencies
+      .filter((dep) => dep[0] !== '.')
+      .forEach((dep) => {
+        try {
+          const pkg = require(`${dep}/package.json`); // TODO: this approach doesn't handle Webpack.
+          config.visitedPackages.set(`${pkg.name}@${pkg.version}`, {
+            name: pkg.name,
+            version: pkg.version,
+          });
+        } catch (ingored) {
+          debug(`fail to resolve ${dep}, requested by ${config.filename}`);
+        }
+      });
+  }
 
   for (let i = 0, l = dependencies.length; i < l; i++) {
     const dep = dependencies[i];
